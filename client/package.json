@@ -1,0 +1,35 @@
+{
+  "name": "express-starter-client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "api:generate": "openapi-ts",
+    "api:check": "node scripts/check-generated.mjs",
+    "dev": "npm run api:generate && vite",
+    "build": "npm run api:generate && tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "preview": "vite preview",
+    "lint": "../server/node_modules/.bin/eslint . --max-warnings 0"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "5.100.14",
+    "react": "19.2.6",
+    "react-dom": "19.2.6"
+  },
+  "devDependencies": {
+    "@hey-api/openapi-ts": "0.97.3",
+    "@types/node": "^24.7.2",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-basic-ssl": "^2.3.0",
+    "@vitejs/plugin-react": "6.0.1",
+    "typescript": "~5.9.3",
+    "vite": "8.3.5",
+    "vitest": "^4.1.0"
+  },
+  "overrides": {
+    "@hey-api/json-schema-ref-parser": { "js-yaml": "4.3.2" }
+  }
+}

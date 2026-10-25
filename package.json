@@ -1,0 +1,13 @@
+{
+  "name": "personal-express-ts-setup",
+  "private": true,
+  "engines": { "node": ">=22.13.0" },
+  "scripts": {
+    "setup": "npm --prefix server ci && npm --prefix client ci",
+    "dev:server": "npm --prefix server run dev",
+    "dev:client": "npm --prefix client run dev",
+    "api:generate": "npm --prefix server run openapi:generate && npm --prefix client run api:generate",
+    "api:check": "npm --prefix server run openapi:check && npm --prefix client run api:check",
+    "check": "npm --prefix server run check && npm --prefix client run api:check && npm --prefix client run build && npm --prefix client test"
+  }
+}

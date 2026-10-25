@@ -1,0 +1,48 @@
+:root { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #23332c; background: #f6f5ef; font-synthesis: none; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+button, input { font: inherit; }
+a { color: inherit; }
+button, a { -webkit-tap-highlight-color: transparent; }
+.shell { max-width: 1200px; margin: auto; padding: 0 48px; }
+.masthead { height: 112px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #dddfd6; }
+.brand { font-size: 21px; font-weight: 800; text-decoration: none; letter-spacing: -.7px; }
+.brand span { color: #8b958b; font-weight: 500; }
+.docs-link { font-size: 13px; text-decoration: none; }
+.workspace { min-height: calc(100vh - 186px); display: grid; grid-template-columns: 1.15fr 1fr; align-items: center; gap: 80px; padding: 72px 0; }
+.eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 2px; color: #7b886f; }
+h1 { font-size: clamp(36px, 4vw, 53px); line-height: 1.18; letter-spacing: -2.6px; margin: 24px 0; font-weight: 600; }
+.lede { max-width: 390px; font-size: 16px; line-height: 1.8; color: #738075; }
+.stack { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 34px; }
+.stack span { border: 1px solid #d9ded1; border-radius: 4px; padding: 8px 10px; font-size: 10px; color: #738075; }
+.card { background: #fff; border: 1px solid #e3e7dc; border-radius: 12px; padding: 38px; box-shadow: 0 14px 40px #23332c05; }
+h2 { font-size: 26px; letter-spacing: -1px; margin: 16px 0 10px; font-weight: 600; }
+.card-description { font-size: 13px; color: #818a81; margin-bottom: 30px; line-height: 1.6; }
+form { display: flex; flex-direction: column; }
+label { font-size: 12px; margin-bottom: 9px; font-weight: 500; }
+input { background: #fcfcf9; border: 1px solid #e0e4d9; border-radius: 5px; padding: 12px; margin-bottom: 20px; color: #23332c; width: 100%; }
+button { border: none; border-radius: 5px; padding: 13px 16px; background: #314e3d; color: #fff; cursor: pointer; font-size: 13px; }
+button:hover { background: #243c2e; }
+button:disabled { opacity: .55; cursor: wait; }
+button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid #829c62; outline-offset: 3px; }
+form button { margin-top: 6px; text-align: left; display: flex; justify-content: space-between; }
+.account-options { border-top: 1px solid #ecede7; margin-top: 26px; padding-top: 18px; display: grid; gap: 12px; }
+.text-button { color: #65745f; background: none; padding: 0; text-align: left; font-size: 12px; }
+.text-button:hover { background: none; color: #23332c; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.secondary { background: #edf0e7; color: #314e3d; }
+.secondary:hover { background: #e1e8d7; }
+.profile { margin: 28px 0; }
+dt { color: #818a81; font-size: 12px; margin-top: 16px; }
+dd { margin: 6px 0; font-size: 15px; overflow-wrap: anywhere; }
+.error, .notice { font-size: 13px; line-height: 1.6; margin: 24px 0 0; }
+.error { color: #a34435; }
+.notice { color: #466f36; }
+footer { border-top: 1px solid #dddfd6; height: 74px; display: flex; align-items: center; font-size: 11px; color: #8b958b; }
+@media (max-width: 760px) {
+  .shell { padding: 0 24px; }
+  .masthead { height: 84px; }
+  .workspace { grid-template-columns: 1fr; gap: 40px; padding: 40px 0; }
+  h1 { font-size: 38px; letter-spacing: -1.8px; }
+  .card { padding: 26px; }
+}
