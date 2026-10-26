@@ -4,6 +4,10 @@ A layered Express/MySQL API with a Vite/React frontend and a generated Hey API
 SDK. The backend owns the public Zod models; frontend types, SDK functions, and
 TanStack Query helpers come from its OpenAPI contract.
 
+For the jewelry app, read the [approved database design and intended application
+flow](server/docs/jewelry-inventory-design.md), including the gaps between this
+starter and the approved schema.
+
 ## Start locally
 
 Use Node 22.13+ (the current Node 22 release is recommended) and a local MySQL

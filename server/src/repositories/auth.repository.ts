@@ -9,7 +9,7 @@ import { UserDTO } from "../dtos/user.dto";
 import { CreateUserRecord } from "../types/createUserRecord";
 
 export class UserRepository {
-  static readonly tableName = "user";
+  static readonly tableName = "users";
 
   static async queryAllUsers(): Promise<UserDTO[]> {
     return await queryListAsync<UserDTO>(`SELECT * FROM ${this.tableName}`);

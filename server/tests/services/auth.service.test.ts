@@ -138,9 +138,41 @@ describe("UserService", () => {
       });
       expect(mockedGenerateTokenPair).not.toHaveBeenCalled();
     });
+
+    it.each([false, true])(
+      "rejects a passwordless account even when dummy verification returns %p",
+      async (dummyPasswordMatches) => {
+        const userInDb: AuthUserDTO = dbRow({
+          userId: 7,
+          email: userInput.email,
+          password: null,
+        });
+        mockedUserRepo.queryByEmail.mockResolvedValueOnce(userInDb);
+        mockedVerify.mockResolvedValueOnce(dummyPasswordMatches);
+
+        await expect(UserService.signIn(userInput)).rejects.toMatchObject({
+          constructor: UnauthorizedError,
+          message: "Invalid email or password.",
+        });
+        expect(mockedVerify).toHaveBeenCalledWith(
+          expect.stringMatching(/^\$argon2id\$/),
+          userInput.password
+        );
+        expect(mockedGenerateTokenPair).not.toHaveBeenCalled();
+        expect(mockedHandleRefreshToken).not.toHaveBeenCalled();
+      }
+    );
   });
 
   describe("refreshAccessToken", () => {
+    beforeEach(() => {
+      jest.useFakeTimers({ now: new Date("2026-10-25T12:00:00Z") });
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
     it.each([42, {}, ["token"], null, ""])(
       "rejects malformed refresh cookies before verification: %p", async (refreshToken) => {
         const req = createRequest();
@@ -166,7 +198,7 @@ describe("UserService", () => {
       mockedCreateTokenHash.mockResolvedValueOnce("oldHash");
       mockedRefreshRepo.queryByUserIdAndTokenHash.mockResolvedValueOnce(dbRow({
         isRevoked: 0,
-        expiration: new Date(Date.now() + 60_000),
+        expiration: "2026-10-25 12:01:00",
       }));
       mockedRefreshRepo.revokeActiveTokenByHash.mockResolvedValueOnce(1);
       mockedGenerateTokenPair.mockResolvedValueOnce(tokens);
@@ -222,7 +254,7 @@ describe("UserService", () => {
       mockedCreateTokenHash.mockResolvedValueOnce("hash");
       mockedRefreshRepo.queryByUserIdAndTokenHash.mockResolvedValueOnce(dbRow({
         isRevoked: 0,
-        expiration: new Date(Date.now() + 60_000),
+        expiration: "2026-10-25 12:01:00",
       }));
       mockedRefreshRepo.revokeActiveTokenByHash.mockResolvedValueOnce(0);
 
@@ -236,30 +268,53 @@ describe("UserService", () => {
       expect(mockedGenerateTokenPair).not.toHaveBeenCalled();
     });
 
-    it("clears cookie and throws ForbiddenError when stored token is expired", async () => {
-      const req = createRequest({
-        cookies: { refreshToken: "oldToken" },
-      });
-      const res = createResponse();
+    it.each(["2026-10-25 11:59:00", "2026-10-25 12:00:00"])(
+      "clears cookie and rejects expired tokens, including exact expiration: %s",
+      async (expiration) => {
+        const req = createRequest({
+          cookies: { refreshToken: "oldToken" },
+        });
+        const res = createResponse();
 
-      mockedVerifyRefreshToken.mockResolvedValueOnce({ sub: "3" });
-      mockedCreateTokenHash.mockResolvedValueOnce("hash");
-      mockedRefreshRepo.queryByUserIdAndTokenHash.mockResolvedValueOnce(dbRow({
-        isRevoked: 0,
-        expiration: new Date(Date.now() - 60_000),
-      }));
+        mockedVerifyRefreshToken.mockResolvedValueOnce({ sub: "3" });
+        mockedCreateTokenHash.mockResolvedValueOnce("hash");
+        mockedRefreshRepo.queryByUserIdAndTokenHash.mockResolvedValueOnce(dbRow({
+          isRevoked: 0,
+          expiration,
+        }));
 
-      await expect(UserService.refreshAccessToken(req, res)).rejects.toBeInstanceOf(
-        ForbiddenError
-      );
-      expect(mockedRefreshRepo.updateTokenRevokedStatus).toHaveBeenCalledWith(
-        "hash",
-        1,
-        3
-      );
-      expect(mockedClearRefreshTokenCookie).toHaveBeenCalledWith(res);
-      expect(mockedRefreshRepo.revokeActiveTokenByHash).not.toHaveBeenCalled();
-    });
+        await expect(UserService.refreshAccessToken(req, res)).rejects.toBeInstanceOf(
+          ForbiddenError
+        );
+        expect(mockedRefreshRepo.updateTokenRevokedStatus).toHaveBeenCalledWith(
+          "hash",
+          1,
+          3
+        );
+        expect(mockedClearRefreshTokenCookie).toHaveBeenCalledWith(res);
+        expect(mockedRefreshRepo.revokeActiveTokenByHash).not.toHaveBeenCalled();
+      }
+    );
+
+    it.each(["not-a-date", "2026-02-30 12:00:00", "0000-00-00 00:00:00"])(
+      "does not rotate a token with invalid stored expiration: %s",
+      async (expiration) => {
+        mockedVerifyRefreshToken.mockResolvedValueOnce({ sub: "3" });
+        mockedCreateTokenHash.mockResolvedValueOnce("hash");
+        mockedRefreshRepo.queryByUserIdAndTokenHash.mockResolvedValueOnce(dbRow({
+          isRevoked: 0,
+          expiration,
+        }));
+
+        await expect(UserService.refreshAccessToken(
+          createRequest({ cookies: { refreshToken: "oldToken" } }),
+          createResponse()
+        )).rejects.toThrow("Invalid MySQL UTC timestamp");
+        expect(mockedRefreshRepo.revokeActiveTokenByHash).not.toHaveBeenCalled();
+        expect(mockedGenerateTokenPair).not.toHaveBeenCalled();
+        expect(mockedHandleRefreshToken).not.toHaveBeenCalled();
+      }
+    );
 
     it("throws UnauthorizedError when token subject is invalid", async () => {
       const req = createRequest({

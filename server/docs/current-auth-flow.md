@@ -2,6 +2,11 @@
 
 This document describes the current custom authentication flow implemented by the Express API.
 
+Auth repositories and generated DTOs use the approved `users` and `refreshTokens`
+tables. Resource filenames and class names remain singular. See the
+[approved database design and integration gaps](jewelry-inventory-design.md)
+for the complete schema and planned business membership authorization.
+
 ## Overview
 
 The app uses a custom email/password authentication system:
@@ -30,7 +35,7 @@ Flow:
 1. Validates the request body with `UserInputSchema`.
 2. Checks whether the email already exists.
 3. Hashes the password with Argon2id.
-4. Inserts the user into the `user` table.
+4. Inserts the user into the `users` table. This does not create a business or membership.
 5. Returns `{ success: true }` with status `201`.
 
 Errors:
@@ -47,14 +52,15 @@ Flow:
 1. Validates the request body with `UserInputSchema`.
 2. Looks up the user by email.
 3. Verifies the submitted password with Argon2id.
-4. If the user does not exist, verifies against a dummy Argon2id hash anyway.
+4. If the user does not exist or has a NULL password, verifies against a dummy
+   Argon2id hash anyway, then rejects the credentials regardless of that result.
 5. Uses a generic failure message for missing users and incorrect passwords.
 6. Generates:
    - access token: JWT, `15m`
    - refresh token: JWT, `7d`
 7. Adds a random `jti` to each refresh token so every issued refresh token is unique.
 8. Hashes the refresh token with SHA-256.
-9. Stores the refresh-token hash, user id, and expiration in the `refreshToken` table.
+9. Stores the refresh-token hash, user id, and expiration in the `refreshTokens` table.
 10. Sets the raw refresh token in an HTTP-only cookie.
 11. Returns `{ accessToken }`.
 
@@ -87,7 +93,8 @@ Flow:
 4. Hashes the raw refresh token.
 5. Looks up the stored refresh-token row by `userId` and `tokenHash`.
 6. Rejects unknown tokens.
-7. Checks the stored DB expiration.
+7. Validates and parses the stored DB expiration as a UTC timestamp. Malformed
+   database values fail with a server error before token consumption or issuance.
 8. If expired:
    - revokes that token row,
    - clears the refresh cookie,
@@ -95,7 +102,7 @@ Flow:
 9. Attempts to atomically revoke the active refresh token:
 
 ```sql
-UPDATE refreshToken SET isRevoked = 1
+UPDATE refreshTokens SET isRevoked = 1
 WHERE tokenHash = ? AND userId = ? AND isRevoked = 0
 ```
 
@@ -112,6 +119,7 @@ WHERE tokenHash = ? AND userId = ? AND isRevoked = 0
 Security notes:
 
 - `revokedRows` is the source of truth for replay detection.
+- Expiration is compared with the current instant in UTC; equality counts as expired.
 - The service intentionally does not return early on `isRevoked === 1`; already-revoked tokens are handled by the atomic update returning `0` rows.
 - Expired tokens revoke only the expired token, not all sessions.
 - Reused or concurrently consumed tokens trigger the revoke-all breach protocol.
@@ -200,22 +208,19 @@ Properties:
 
 ## Database Tables
 
-### `user`
+### `users`
 
 Relevant fields:
 
 - `userId`
 - `email`
-- `password`
+- `password`: nullable `VARCHAR(512)`; password-based accounts store an Argon2id hash.
 
-Security hardening migration:
+Password login always rejects a NULL password. The approved migration permits
+NULL for future provider-only accounts; Google authentication is not implemented.
+User IDs are `INT UNSIGNED`, and audit timestamps are non-null strings in the DTO.
 
-```sql
-ALTER TABLE user
-  MODIFY password VARCHAR(512) NOT NULL;
-```
-
-### `refreshToken`
+### `refreshTokens`
 
 Relevant fields:
 
@@ -225,19 +230,55 @@ Relevant fields:
 - `isRevoked`
 - `expiration`
 
-Security hardening migration:
+The approved migration defines `fk_refreshTokens_user` referencing
+`users(userId)` with `ON DELETE CASCADE`, unique `uq_refreshTokens_tokenHash`,
+`ix_refreshTokens_userId_isRevoked`, and `chk_refreshTokens_isRevoked` limiting
+the flag to 0/1. IDs are `INT UNSIGNED`; expiration and audit timestamps are
+required. These are application sessions, not provider tokens.
 
-```sql
-ALTER TABLE refreshToken
-  ADD CONSTRAINT fk_refreshToken_user
-    FOREIGN KEY (userId) REFERENCES user(userId) ON DELETE CASCADE;
+The mysql2 pool keeps `dateStrings: true` and uses `timezone: "Z"` for JavaScript
+Date parameters. The first checkout of each physical connection awaits
+`SET SESSION time_zone = '+00:00'` before exposing it; a failed setup destroys that
+connection and rejects the request. Successful setup is tracked in a WeakSet keyed
+by the underlying connection, since mysql2 creates a new promise wrapper on each
+checkout. New and replacement physical connections initialize independently;
+reused connections skip setup. Repository helpers release connections after
+success or failure. Callers must preserve the session time zone; destroy a
+connection if its session is reset or changed rather than returning it to the pool.
+Use the exported `getConnection()` for future explicit transactions; the raw
+pool stays private. The default export exposes `getConnection()` and `end()`.
 
-CREATE UNIQUE INDEX ux_refreshToken_tokenHash
-  ON refreshToken (tokenHash);
+`pool.execute()` normally checks out a pooled connection, calls that connection's
+`execute()` and releases it. Our `withConnection()` performs the same lifecycle
+with awaited UTC initialization before a connection's first use. Pool reuse and
+prepared-statement execution remain available; the extra SET round trip occurs
+only once per physical connection. Initialization is awaited directly on checkout,
+so application queries do not race an asynchronous pool event listener.
+`withConnection()` does not start a transaction:
+atomic multi-write work still needs one explicitly shared connection with
+begin/commit/rollback handling.
 
-CREATE INDEX ix_refreshToken_userId_isRevoked
-  ON refreshToken (userId, isRevoked);
+`parseMysqlUtcTimestamp` accepts the approved schema's second-precision
+`YYYY-MM-DD HH:mm:ss` format and rejects invalid calendar dates with an
+`AppError` carrying status 500, because the invalid value came from the database.
+DTO timestamps
+remain strings; conversion to Date is explicit for expiry comparison. A future
+timestamp API should map valid UTC values to ISO 8601 strings with `Z` and let
+the frontend localize display. Fractional-precision columns would require an
+explicit parser update.
+
+Regenerate the internal DTOs from an already-created local schema with:
+
+```sh
+npm --prefix server run generate:resource -- user --from-db --table users
+npm --prefix server run generate:resource -- refreshToken --from-db --table refreshTokens
 ```
+
+These commands run from the repository root, read database metadata and write
+DTOs, then build the server. They do not create tables or execute migrations.
+The approved [initial migration](../migrations/0001_initial_schema.sql) contains
+the constraints directly; do not apply the earlier singular-table ALTER examples
+from the starter's history to the new tables.
 
 ## Error Handling
 

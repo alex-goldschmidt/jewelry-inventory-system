@@ -9,7 +9,7 @@ import {
 } from "../dtos/projections/refreshToken.projection";
 
 export class RefreshTokenRepository {
-  static readonly tableName = "refreshToken";
+  static readonly tableName = "refreshTokens";
 
   static async createRefreshTokenRecord(
     tokenHash: string,

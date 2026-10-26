@@ -40,6 +40,15 @@ Follow the naming and endpoint examples below when adding a resource.
 - Returns public models for API-facing results, or counts/inserted IDs for mutations.
 - Uses mappers to keep internal DTO fields out of public responses.
 
+### Errors
+
+Before introducing a plain `Error`, inspect
+[`src/config/exceptions.ts`](../src/config/exceptions.ts) and choose an existing
+error class when its meaning fits. `ValidationError` describes invalid HTTP input;
+invalid database values or server configuration should use `AppError` with
+`HttpStatusCode.SERVER_ERROR`. Preserve original driver errors when propagating
+database failures so their diagnostic information remains available.
+
 ### Repository
 
 - Contains SQL queries.
@@ -68,6 +77,15 @@ Examples:
 - repository class: `OrganizationRepository`
 - primary key: `organizationId`
 - route mount: `/organizations`
+
+## Documentation Conventions
+
+When a function needs an explanatory comment above its declaration, use JSDoc
+(`/** ... */`) rather than a line comment. Explain its purpose and relevant
+contract, including parameters, return value, errors and cleanup obligations
+where useful. Keep comments about individual implementation steps inside the
+function. Documentation above other declarations, such as shared connection
+state, should explain why that state exists and how it is managed.
 
 ## Endpoint Shape
 
@@ -144,6 +162,12 @@ The scaffold gives you consistent structure, but you still need to finish the re
 - Add request-specific models manually if the API payload needs explicit typing.
 - Add service/controller/route layers manually when the resource needs HTTP endpoints.
 - Add auth/authorization middleware and tests when API behavior changes.
+
+## Migration Conventions
+
+Use `CREATE TABLE IF NOT EXISTS` for all new table declarations in migrations.
+Changes to an existing table still require an explicit migration; this clause
+does not reconcile its schema or make seed inserts safe to rerun.
 
 ## Recommended Workflow
 
