@@ -24,6 +24,7 @@ import dotenv from "dotenv";
 import { RefreshTokenRepository } from "../repositories/refreshToken.repository";
 import { z } from "zod";
 import { UserIdStringSchema } from "../utils/authClaims";
+import { parseMysqlUtcTimestamp } from "../utils/mysqlTimestamp";
 dotenv.config();
 
 const RefreshTokenCookieSchema = z.object({
@@ -39,8 +40,8 @@ const INVALID_CREDENTIALS_MESSAGE = "Invalid email or password.";
 const DUMMY_PASSWORD_HASH =
   "$argon2id$v=19$m=19456,t=2,p=1$taWh6nrERdcm9BHI2lZJwQ$ed0QBVeqDFJZo6SmyoIh7/LTYd2JNc1E4ognqo4WoTk";
 
-function isExpired(expiration: string | Date): boolean {
-  return new Date(expiration).getTime() <= Date.now();
+function isExpired(expiration: string): boolean {
+  return parseMysqlUtcTimestamp(expiration).getTime() <= Date.now();
 }
 
 export class UserService {
@@ -59,7 +60,7 @@ export class UserService {
       validatedUser.password
     );
 
-    if (!existingUser || !isPasswordValid) {
+    if (!existingUser?.password || !isPasswordValid) {
       throw new UnauthorizedError(INVALID_CREDENTIALS_MESSAGE);
     }
 
