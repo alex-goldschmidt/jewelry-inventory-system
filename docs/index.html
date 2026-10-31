@@ -1,0 +1,884 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A simple, local jewelry inventory prototype. Find a piece, read its inventory card, and add or edit items.">
+  <meta name="theme-color" content="#086b8a">
+  <title>Jewelry inventory</title>
+  <style>
+:root {
+  color-scheme: light;
+  --accent: #086b8a;
+  --accent-dark: #064d66;
+  --ink: #20323c;
+  --muted: #596b76;
+  --line: #d5e4eb;
+  --soft: #eaf3f7;
+  --background: #f5f9fb;
+  --error: #a32c29;
+  --control-line: color-mix(in srgb, var(--accent) 28%, #c8cdd1);
+  --focus-ring: color-mix(in srgb, var(--accent) 18%, transparent);
+  --hover: color-mix(in srgb, var(--soft) 45%, white);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 18px;
+  line-height: 1.5;
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--background); color: var(--ink); }
+button, input, select { font: inherit; }
+button, a, input, select, label[for="photo-input"] { -webkit-tap-highlight-color: transparent; }
+button, label[for="photo-input"] { cursor: pointer; }
+button:disabled { cursor: wait; opacity: .7; }
+[hidden] { display: none !important; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+a { color: var(--accent); text-underline-offset: 4px; }
+h1, h2, h3, p, dl { margin: 0; }
+h1 { font-size: 2.35rem; line-height: 1.2; letter-spacing: -.035em; font-weight: 650; }
+h2 { font-size: 1.3rem; line-height: 1.35; font-weight: 630; letter-spacing: -.02em; }
+h3 { font-size: 1.1rem; line-height: 1.4; font-weight: 630; }
+strong { font-weight: 620; }
+h1, dd, .inventory-number, .style-cell, .price-cell, .detail-subtitle, .financial-row > div { overflow-wrap: anywhere; min-width: 0; }
+.page-heading > div { min-width: 0; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.skip-link { position: fixed; top: -100px; left: 20px; z-index: 20; padding: 10px 20px; background: white; }
+.skip-link:focus { top: 10px; }
+.app-header { background: white; border-bottom: 1px solid var(--line); }
+.header-inner { max-width: 1260px; margin: auto; min-height: 92px; padding: 16px 30px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.brand { display: inline-flex; align-items: center; gap: 14px; border: 0; padding: 0; background: transparent; color: var(--ink); text-align: left; min-width: 0; flex: 0 1 auto; }
+.brand-copy { display: block; min-width: 0; }
+.brand-name { display: block; font-size: 1.05rem; font-weight: 650; letter-spacing: -.02em; line-height: 1.3; }
+.brand-description { display: block; font-size: .78rem; color: var(--muted); margin-top: 4px; }
+.brand-logo { display: block; width: auto; height: 60px; object-fit: contain; }
+.local-label { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: .8rem; }
+.local-label::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+.page { max-width: 1260px; padding: 48px 30px 64px; margin: 0 auto; min-height: calc(100vh - 210px); }
+.page:focus { outline: none; }
+.page-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 32px; }
+.eyebrow { font-size: .7rem; font-weight: 650; letter-spacing: .14em; color: var(--muted); margin-bottom: 10px; }
+.intro { color: var(--muted); margin-top: 12px; }
+.button { border: 1px solid var(--line); background: white; color: var(--accent-dark); border-radius: 8px; min-height: 48px; padding: 10px 18px; display: inline-flex; align-items: center; justify-content: center; gap: 10px; font-size: .94rem; font-weight: 600; text-decoration: none; white-space: nowrap; transition: background .15s, border-color .15s; }
+.button:hover { background: var(--soft); border-color: var(--accent); }
+.button.primary { background: var(--accent); border-color: var(--accent); color: white; padding: 12px 24px; }
+.button.primary:hover { background: var(--accent-dark); }
+.button.text-button { background: transparent; border-color: transparent; padding-left: 6px; padding-right: 6px; }
+.button.text-button:hover { background: var(--soft); }
+.search-area { margin-bottom: 30px; }
+.search-area label { display: block; font-size: .94rem; font-weight: 600; margin-bottom: 10px; }
+.search-control { position: relative; display: flex; align-items: center; gap: 12px; background: white; border: 1px solid var(--control-line); border-radius: 10px; padding: 0 16px; max-width: 760px; }
+.search-control:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px var(--focus-ring); }
+.search-control svg { width: 23px; height: 23px; flex: 0 0 auto; color: var(--muted); }
+.search-control input { background: transparent; border: 0; min-height: 62px; width: 100%; min-width: 0; color: var(--ink); outline: 0; }
+.search-control input::placeholder { color: var(--muted); }
+.search-control input::-webkit-search-cancel-button { display: none; }
+.search-clear { font-size: .8rem; flex: 0 0 auto; }
+.list-summary { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: .82rem; color: var(--muted); margin-bottom: 12px; }
+.list-summary p:first-child { color: var(--ink); font-weight: 600; }
+.inventory-table { overflow: hidden; background: white; border: 1px solid var(--line); border-radius: 12px; }
+.list-head, .inventory-row { display: grid; grid-template-columns: 96px minmax(150px, 1.2fr) minmax(110px, .9fr) minmax(170px, 1.1fr) minmax(110px, .85fr) 137px; gap: 22px; align-items: center; padding: 20px 26px; }
+.list-head { background: var(--soft); font-size: .75rem; color: var(--muted); padding-top: 16px; padding-bottom: 16px; font-weight: 600; border-bottom: 1px solid var(--line); }
+.inventory-row { min-height: 127px; border-bottom: 1px solid var(--line); }
+.inventory-row:last-child { border-bottom: 0; }
+.inventory-row:hover { background: var(--hover); }
+.thumbnail { width: 86px; height: 82px; border-radius: 7px; overflow: hidden; }
+.inventory-photo { width: 100%; height: 100%; object-fit: cover; display: block; }
+.inventory-number strong { font-size: 1.08rem; letter-spacing: -.025em; }
+.sample-label { display: block; font-size: .72rem; color: var(--muted); margin-top: 5px; }
+.photo-placeholder { background: var(--soft); width: 100%; height: 100%; color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: .61rem; }
+.photo-placeholder svg { width: 31px; height: 31px; }
+.photo-placeholder.large { min-height: 395px; padding: 32px; font-size: 1rem; gap: 12px; color: var(--muted); }
+.photo-placeholder.large svg { width: 68px; height: 68px; color: var(--muted); margin-bottom: 6px; }
+.photo-placeholder.large small { font-size: .81rem; text-align: center; color: var(--muted); }
+.not-provided { color: var(--muted); font-weight: 400; }
+.price-cell .not-provided { font-size: .9rem; }
+.status { display: inline-flex; align-items: center; gap: 7px; padding: 5px 10px; border-radius: 6px; background: #f0f1ef; color: #535e58; font-weight: 550; font-size: .79rem; white-space: nowrap; }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.status-available { background: #e8f3ed; color: #23624d; }
+.status-sold { background: #eeedf0; color: #655d6d; }
+.mobile-label { display: none; }
+.sample-note { color: var(--muted); font-size: .77rem; margin-top: 18px; line-height: 1.7; }
+.empty-state { text-align: center; padding: 70px 24px; border: 1px solid var(--line); background: white; border-radius: 12px; }
+.empty-state p { color: var(--muted); margin: 14px 0 24px; }
+.app-footer { max-width: 1260px; margin: auto; padding: 22px 30px 28px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--line); gap: 20px; color: var(--muted); font-size: .73rem; }
+.footer-links { display: flex; align-items: center; gap: 22px; }
+.footer-links a { min-height: 44px; display: inline-flex; align-items: center; text-decoration: none; }
+.footer-links a:hover { text-decoration: underline; }
+.back-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 26px; }
+.back-row .eyebrow { margin: 0; }
+.back-button { margin-left: -6px; }
+.detail-page { padding-top: 27px; }
+.detail-heading { margin-bottom: 28px; }
+.detail-subtitle { display: flex; align-items: center; gap: 20px; margin-top: 12px; color: var(--muted); }
+.detail-subtitle strong { color: var(--ink); margin-left: 7px; }
+.fictional-note { color: var(--muted); font-size: .8rem; margin-top: 8px; }
+.detail-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 44px; align-items: start; }
+.large-photo { border: 1px solid var(--line); border-radius: 12px; background: var(--soft); overflow: hidden; aspect-ratio: 1.1; }
+.large-photo .photo-placeholder { height: 100%; min-height: unset; }
+.detail-photo { display: block; width: 100%; height: 100%; object-fit: contain; }
+.photo-caption { font-size: .79rem; color: var(--muted); margin: 15px 2px; }
+.photo-thumbnails { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 14px; }
+.photo-thumb { padding: 4px; border: 2px solid transparent; border-radius: 8px; background: white; color: var(--ink); min-width: 90px; }
+.photo-thumb.selected { border-color: var(--accent); }
+.photo-thumb img { width: 84px; height: 72px; object-fit: cover; display: block; border-radius: 4px; }
+.photo-thumb span { display: block; font-size: .69rem; margin: 6px 0 3px; }
+.item-card { background: white; padding: 26px 30px; border: 1px solid var(--line); border-radius: 12px; }
+.retail-block { border-bottom: 1px solid var(--line); padding-bottom: 20px; }
+.row-label, dt { display: block; color: var(--muted); font-size: .8rem; margin-bottom: 6px; }
+.retail-price { font-size: 2.15rem; line-height: 1.25; font-weight: 650; letter-spacing: -.035em; color: var(--accent-dark); }
+.retail-price .not-provided { font-size: 1.35rem; }
+.material-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 22px 0; border-bottom: 1px solid var(--line); }
+dd { margin: 0; font-weight: 570; }
+.financial-section h2 { font-size: 1rem; margin: 22px 0 4px; }
+.financial-row { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 20px; padding: 17px 0; border-bottom: 1px solid var(--line); }
+.financial-row strong { font-size: 1.05rem; }
+.financial-row small { font-size: .77rem; font-weight: 400; color: var(--muted); }
+.code-value { border-left: 1px solid var(--line); padding-left: 20px; font-size: .9rem; overflow-wrap: anywhere; }
+.code-value .not-provided { font-size: .85rem; }
+.insurance-row { border: 0; padding-bottom: 0; }
+.gemstone-section { margin-top: 45px; padding-top: 30px; border-top: 1px solid var(--line); }
+.section-heading { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+.section-count { font-size: .78rem; color: var(--muted); padding: 4px 10px; border-radius: 6px; background: var(--soft); }
+.gemstone-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.gemstone-card { background: white; padding: 24px 28px; border: 1px solid var(--line); border-radius: 10px; }
+.gemstone-title { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+.group-index { color: var(--accent); font-size: .75rem; font-weight: 600; background: var(--soft); padding: 5px 8px; border-radius: 5px; }
+.gemstone-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.carat-help { margin-top: 10px !important; padding-bottom: 15px; border-bottom: 1px solid var(--line); }
+.gemstone-card .financial-row:last-child { border-bottom: 0; padding-bottom: 0; }
+.empty-groups { padding: 20px 0; }
+.save-confirmation { display: flex; align-items: center; gap: 10px; background: #e7f2eb; color: #1d5d43; padding: 12px 18px; border-radius: 8px; margin-bottom: 20px; font-weight: 550; }
+.editor-page { max-width: 1140px; }
+.form-guide { display: flex; flex-direction: column; gap: 5px; margin-bottom: 28px; padding: 0 0 0 16px; border-left: 3px solid var(--accent); font-size: .88rem; }
+.form-guide span { color: var(--muted); }
+.form-section { background: white; border: 1px solid var(--line); border-radius: 12px; padding: 28px 32px 32px; margin-bottom: 22px; }
+.form-section-title { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 26px; }
+.form-section-title p { font-size: .85rem; color: var(--muted); margin-top: 6px; }
+.section-number { color: var(--accent); font-size: .75rem; font-weight: 650; line-height: 1.75; background: var(--soft); padding: 4px 8px; border-radius: 5px; }
+.fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px 30px; align-items: start; }
+.field label { display: block; font-size: .86rem; font-weight: 600; margin-bottom: 8px; }
+.field input, .field select { width: 100%; height: 50px; background: white; color: var(--ink); border: 1px solid var(--control-line); border-radius: 7px; padding: 10px 12px; min-width: 0; }
+.field select { padding-right: 26px; }
+.field input:hover, .field select:hover { border-color: var(--accent); }
+.field input[aria-invalid="true"], .field select[aria-invalid="true"] { border: 2px solid var(--error); }
+.field-help { color: var(--muted); font-size: .76rem; line-height: 1.6; margin-top: 7px; }
+.field-error { color: var(--error); font-size: .82rem; margin-top: 7px; line-height: 1.5; }
+.required-label { color: var(--muted); font-size: .68rem; font-weight: 400; margin-left: 6px; }
+.amount-code-pair { display: grid; grid-template-columns: 1.15fr 1fr; gap: 16px; }
+.date-pair, .quantity-carats { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.date-fields .text-button { font-size: .8rem; margin-top: 3px; }
+.no-photos { display: flex; align-items: center; gap: 18px; padding: 22px; background: var(--soft); border-radius: 8px; color: var(--muted); font-size: .86rem; margin-bottom: 18px; }
+.no-photos strong { color: var(--ink); font-weight: 550; }
+.photo-upload { display: flex; align-items: center; gap: 18px; margin-top: 14px; }
+.photo-upload p { color: var(--muted); font-size: .76rem; }
+.photo-upload:focus-within label { outline: 3px solid var(--accent); outline-offset: 3px; }
+.editor-photo-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.editor-photo { border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
+.editor-photo img { display: block; width: 100%; height: 155px; object-fit: contain; background: var(--soft); border-radius: 4px; }
+.photo-name { color: var(--muted); font-size: .72rem; margin: 9px 0 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.photo-controls { display: flex; align-items: stretch; flex-direction: column; gap: 4px; }
+.photo-controls .button { min-height: 44px; font-size: .81rem; }
+.cover-label { min-height: 44px; display: flex; align-items: center; justify-content: center; color: var(--accent-dark); font-size: .83rem; font-weight: 600; }
+.danger-text { color: var(--error) !important; }
+.no-groups { font-size: .87rem; color: var(--muted); margin-bottom: 20px; }
+.editor-group { border: 1px solid var(--line); background: var(--hover); border-radius: 9px; padding: 20px 24px 24px; margin-bottom: 20px; }
+.editor-group-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; gap: 15px; }
+.editor-group-heading .button { font-size: .8rem; }
+.pricing-help { color: var(--muted); font-size: .83rem; align-self: center; }
+.form-actions { position: sticky; bottom: 0; background: #fffffffa; border: 1px solid var(--line); border-radius: 10px; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; gap: 20px; box-shadow: 0 -4px 20px #202c2a04; }
+.form-actions p { font-size: .76rem; color: var(--muted); max-width: 370px; }
+.form-actions > div { display: flex; align-items: center; gap: 12px; }
+.notice { background: #fff4f1; border: 1px solid #e6bbb3; border-radius: 8px; padding: 18px 22px; line-height: 1.7; margin-bottom: 22px; }
+.notice h2 { font-size: 1.1rem; margin-bottom: 8px; }
+.error-notice { color: #8e2826; }
+dialog { width: min(490px, calc(100vw - 36px)); border: 1px solid var(--line); padding: 30px; border-radius: 14px; color: var(--ink); box-shadow: 0 20px 80px #14292030; }
+dialog::backdrop { background: #1e342756; }
+dialog p { color: var(--muted); margin-top: 14px; }
+.dialog-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+@media (max-width: 1100px) {
+  .list-head, .inventory-row { grid-template-columns: 74px minmax(132px, 1.1fr) minmax(85px, .8fr) minmax(150px, 1fr) 102px 124px; gap: 14px; padding-left: 20px; padding-right: 20px; }
+  .thumbnail { width: 72px; height: 74px; }
+  .view-cell .button { padding: 10px 12px; font-size: .87rem; }
+  .detail-layout { gap: 26px; }
+  .item-card { padding: 24px; }
+  .fields-grid { gap: 24px; }
+  .group-fields, .form-section[aria-label="Material and material cost"] .fields-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 900px) {
+  .page { padding-left: 24px; padding-right: 24px; }
+  .header-inner { padding-left: 24px; padding-right: 24px; }
+  .list-head { display: none; }
+  .inventory-row { grid-template-columns: 82px 1fr 1fr; gap: 12px 20px; padding: 23px; }
+  .thumbnail { grid-column: 1; grid-row: 1 / 4; width: 82px; height: 88px; align-self: start; }
+  .inventory-number { grid-column: 2; }
+  .style-cell { grid-column: 3; }
+  .price-cell { grid-column: 2; }
+  .status-cell { grid-column: 3; }
+  .view-cell { grid-column: 2 / 4; }
+  .view-cell .button { min-width: 135px; }
+  .mobile-label { display: block; font-size: .72rem; color: var(--muted); margin-bottom: 4px; font-weight: 400; }
+  .detail-layout { grid-template-columns: .9fr 1.1fr; gap: 22px; }
+  .material-summary { grid-template-columns: 1fr; gap: 15px; }
+  .financial-row { gap: 12px; }
+  .code-value { padding-left: 12px; }
+  .gemstone-card { padding: 22px; }
+  .fields-grid { grid-template-columns: 1fr; }
+  .editor-photo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 650px) {
+  h1 { font-size: 2rem; }
+  .header-inner { min-height: 80px; padding: 16px 20px; }
+  .brand { gap: 10px; }
+  .brand-logo { height: 48px; flex: 0 0 auto; }
+  .brand-name { font-size: .88rem; }
+  .brand-description { font-size: .7rem; }
+  .local-label { font-size: .7rem; max-width: 82px; gap: 6px; }
+  .local-label::before { flex: 0 0 6px; }
+  .page { padding: 32px 20px 44px; }
+  .page-heading { gap: 18px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 28px; }
+  .page-heading > .button { min-width: 135px; }
+  .intro { font-size: .94rem; margin-top: 9px; }
+  .eyebrow { font-size: .65rem; }
+  .search-control { padding-left: 12px; gap: 8px; flex-wrap: wrap; }
+  .search-control input { width: calc(100% - 40px); font-size: .92rem; min-height: 58px; flex: 1; }
+  .search-control:has(.search-clear:not([hidden])) input { width: calc(100% - 40px); flex-basis: calc(100% - 40px); }
+  .search-clear { margin-left: 30px; margin-top: -8px; }
+  .list-summary { font-size: .75rem; }
+  .list-summary p:last-child { display: none; }
+  .inventory-row { padding: 20px 16px; gap: 12px 14px; grid-template-columns: 65px 1fr 1fr; }
+  .thumbnail { width: 65px; height: 72px; }
+  .inventory-number { grid-column: 2 / 4; }
+  .style-cell { grid-column: 2; grid-row: 2; }
+  .status-cell { grid-column: 3; grid-row: 2; }
+  .price-cell { grid-column: 2 / 4; grid-row: 3; }
+  .view-cell { grid-row: 4; }
+  .sample-note { font-size: .73rem; }
+  .back-row { flex-wrap: wrap; margin-bottom: 18px; gap: 12px; }
+  .back-row .eyebrow { display: none; }
+  .detail-subtitle { flex-wrap: wrap; gap: 12px; font-size: .91rem; }
+  .detail-layout, .gemstone-grid { grid-template-columns: 1fr; }
+  .large-photo { aspect-ratio: 1.1; }
+  .item-card { padding: 24px; }
+  .financial-row { grid-template-columns: 1fr; gap: 12px; }
+  .code-value { border-left: 0; padding-left: 0; display: flex; align-items: baseline; gap: 10px; }
+  .code-value .row-label { margin-bottom: 0; }
+  .material-summary { grid-template-columns: 1fr 1fr; }
+  .gemstone-section { margin-top: 32px; }
+  .app-footer { padding: 20px; flex-direction: column; align-items: flex-start; gap: 4px; }
+  .footer-links { gap: 20px; flex-wrap: wrap; }
+  .form-guide { font-size: .83rem; }
+  .form-section { padding: 24px 20px; }
+  .form-section-title { gap: 10px; }
+  .amount-code-pair { grid-template-columns: 1fr; gap: 16px; }
+  .date-pair, .quantity-carats { gap: 12px; }
+  .no-photos, .photo-upload { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .no-photos { padding: 18px; }
+  .editor-group { padding: 16px; }
+  .editor-group-heading { flex-wrap: wrap; }
+  .editor-photo-grid { grid-template-columns: 1fr; }
+  .form-actions { padding: 14px; gap: 14px; }
+  .form-actions p { display: none; }
+  .form-actions > div { width: 100%; }
+  .form-actions .button { flex: 1; padding-left: 14px; padding-right: 14px; }
+  .dialog-actions .button { flex: 1; }
+}
+@media (max-width: 350px) {
+  .local-label { display: none; }
+  .page { padding-left: 14px; padding-right: 14px; }
+  .inventory-row { grid-template-columns: 54px 1fr; }
+  .thumbnail { width: 54px; height: 66px; }
+  .inventory-number, .style-cell, .price-cell, .status-cell, .view-cell { grid-column: 2; grid-row: auto; }
+  .quantity-carats, .date-pair, .material-summary { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+
+.storage-warning { max-width: 1200px; margin: 22px auto 0; padding: 16px 22px; border: 1px solid var(--control-line); border-left: 4px solid var(--accent); border-radius: 8px; background: var(--soft); color: var(--ink); font-size: .88rem; line-height: 1.6; }
+@media (max-width: 1260px) { .storage-warning { margin-left: 20px; margin-right: 20px; } }
+</style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div id="app"></div>
+  <noscript><main><h1>Jewelry inventory</h1><p>Enable JavaScript in your browser to use this local prototype.</p></main></noscript>
+  <script>
+(() => {
+'use strict';
+const MATERIALS = ['Gold', 'Silver', 'Platinum', 'Palladium', 'Stainless steel', 'Other'];
+const GEMSTONES = ['Emerald', 'Diamond', 'Ruby', 'Sapphire', 'Pearl', 'Amethyst', 'Topaz', 'Other'];
+const STATUSES = ['Unknown', 'Available', 'Sold'];
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const newId = () => globalThis.crypto?.randomUUID?.() || `local-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+const clone = value => JSON.parse(JSON.stringify(value));
+function emptyGroup() {
+  return { id: newId(), type: '', quantity: '', carats: '', purchaseRate: '', purchaseCode: '', sellingRate: '', sellingCode: '' };
+}
+function emptyItem() {
+  return { id: newId(), inventory: '', style: '', status: 'Unknown', material: '', month: '', year: '', materialCost: '', materialCode: '', productionCost: '', productionCode: '', retail: '', insurance: '', photos: [], groups: [], fictional: false };
+}
+function escapeHTML(value) {
+  return String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
+}
+const provided = value => value !== '' && value !== null && value !== undefined;
+const textValue = value => provided(value) ? escapeHTML(value) : '<span class="not-provided">Not provided</span>';
+function money(value) {
+  if (!provided(value)) return '<span class="not-provided">Not provided</span>';
+  const [whole, decimal] = String(value).split('.');
+  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return escapeHTML(`$${grouped}${decimal ? `.${decimal.padEnd(2, '0')}` : ''}`);
+}
+function carats(value) {
+  if (!provided(value)) return '<span class="not-provided">Not provided</span>';
+  const [whole, decimal = ''] = String(value).split('.');
+  return escapeHTML(`${whole}.${decimal.padEnd(3, '0')}`);
+}
+function manufacture(item) {
+  if (!item.month || !item.year) return '<span class="not-provided">Not provided</span>';
+  return `${MONTHS[Number(item.month) - 1]} ${escapeHTML(item.year)}`;
+}
+function statusBadge(status) {
+  return `<span class="status status-${status.toLowerCase()}"><span aria-hidden="true" class="status-dot"></span>${status}</span>`;
+}
+function photoPlaceholder(large = false) {
+  return `<div class="photo-placeholder ${large ? 'large' : ''}"><svg aria-hidden="true" viewBox="0 0 48 48" fill="none"><rect x="8" y="10" width="32" height="28" rx="4" stroke="currentColor" stroke-width="1.5"/><circle cx="18" cy="19" r="3" stroke="currentColor" stroke-width="1.5"/><path d="m9 33 10-9 7 6 6-5 8 9" stroke="currentColor" stroke-width="1.5"/></svg><span>${large ? 'No photo provided' : 'No photo'}</span>${large ? '<small>Add a photograph when you edit this item.</small>' : ''}</div>`;
+}
+function photoImage(photo, className = '', alt = '') {
+  return `<img class="${className}" src="${escapeHTML(photo.data)}" alt="${escapeHTML(alt || photo.name || 'Item photograph')}">`;
+}
+
+
+const e = escapeHTML;
+
+const sampleData = [
+  {
+    id: 'piece-d2439', inventory: 'D2439', style: 'IR 891', status: 'Unknown',
+    material: 'Gold', month: '4', year: '2026', materialCost: '670', materialCode: 'ROD',
+    productionCost: '1240', productionCode: 'SIBD', retail: '2450', insurance: '1715', photos: [], fictional: false,
+    groups: [
+      { id: 'd2439-emerald', type: 'Emerald', quantity: '3', carats: '0.680', purchaseRate: '450', purchaseCode: '', sellingRate: '650', sellingCode: '' },
+      { id: 'd2439-diamond', type: 'Diamond', quantity: '16', carats: '0.500', purchaseRate: '430', purchaseCode: '', sellingRate: '630', sellingCode: 'RLD' },
+    ],
+  },
+  {
+    id: 'sample-1001', inventory: 'DEMO-1001', style: 'IR 891', status: 'Available', material: 'Gold',
+    month: '', year: '', materialCost: '', materialCode: '', productionCost: '', productionCode: '', retail: '2200', insurance: '',
+    photos: [], groups: [], fictional: true,
+  },
+  {
+    id: 'sample-1002', inventory: 'DEMO-1002', style: 'PN 204', status: 'Available', material: 'Silver',
+    month: '', year: '', materialCost: '', materialCode: '', productionCost: '', productionCode: '', retail: '380', insurance: '',
+    photos: [], groups: [], fictional: true,
+  },
+  {
+    id: 'sample-1003', inventory: 'DEMO-1003', style: 'ER 512', status: 'Sold', material: 'Platinum',
+    month: '', year: '', materialCost: '', materialCode: '', productionCost: '', productionCode: '', retail: '', insurance: '',
+    photos: [], groups: [], fictional: true,
+  },
+];
+
+
+
+const STORAGE_KEY = 'jewelry-inventory-standalone-v1';
+function validNumeric(value) {
+  return typeof value === 'string' && (value === '' || /^\d{1,12}(\.\d{1,6})?$/.test(value));
+}
+function validPhoto(photo) {
+  return photo && typeof photo.id === 'string' && typeof photo.name === 'string' && typeof photo.data === 'string'
+    && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(photo.data);
+}
+function validGroup(group) {
+  return group && ['id', 'type', 'purchaseCode', 'sellingCode'].every(key => typeof group[key] === 'string')
+    && ['quantity', 'carats', 'purchaseRate', 'sellingRate'].every(key => validNumeric(group[key]));
+}
+function validItem(item) {
+  const textKeys = ['id', 'inventory', 'style', 'material', 'month', 'year', 'materialCode', 'productionCode'];
+  return item && textKeys.every(key => typeof item[key] === 'string') && ['Unknown', 'Available', 'Sold'].includes(item.status)
+    && ['materialCost', 'productionCost', 'retail', 'insurance'].every(key => validNumeric(item[key]))
+    && Array.isArray(item.photos) && item.photos.every(validPhoto) && Array.isArray(item.groups) && item.groups.every(validGroup);
+}
+// Use a separate key so this file never writes to the original prototype's data.
+let storagePersistent = true;
+let storageNotice = '';
+let memoryChanges = false;
+function useMemory(message) {
+  storagePersistent = false;
+  storageNotice = `${message} Changes are kept only in memory for this open tab and will be lost when you close or reload it.`;
+}
+function loadItems() {
+  let raw;
+  try { raw = localStorage.getItem(STORAGE_KEY); }
+  catch {
+    useMemory('Browser storage is unavailable.');
+    return { items: clone(sampleData), error: null };
+  }
+  if (raw === null) {
+    const items = clone(sampleData);
+    saveItems(items);
+    return { items, error: null };
+  }
+  let saved;
+  try {
+    saved = JSON.parse(raw);
+    if (saved.version !== 1 || !Array.isArray(saved.items) || !saved.items.every(validItem)) throw new Error('unreadable');
+  } catch {
+    useMemory('The existing saved inventory could not be opened and has not been overwritten. Showing the sample inventory.');
+    return { items: clone(sampleData), error: null };
+  }
+  // Writing the identical value checks availability without changing saved data.
+  saveItems(saved.items);
+  return { items: saved.items, error: null };
+}
+function saveItems(items) {
+  if (!storagePersistent) return false;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, items }));
+    return true;
+  } catch {
+    useMemory('Browser storage is full or unavailable. The latest changes have not been saved to browser storage.');
+    return false;
+  }
+}
+
+
+
+const decimalPattern = /^\d+(?:\.\d+)?$/;
+function normalizeDecimal(value) {
+  const [whole, fraction] = value.split('.');
+  const normalizedWhole = whole.replace(/^0+(?=\d)/, '');
+  return fraction === undefined ? normalizedWhole : `${normalizedWhole}.${fraction}`;
+}
+function numeric(value, key, errors, { integer = false, maxDecimals = 2 } = {}) {
+  const trimmed = String(value ?? '').trim();
+  if (!trimmed) return '';
+  if (!decimalPattern.test(trimmed)) {
+    errors[key] = integer ? 'Enter a positive whole number, such as 3.' : 'Enter a number of zero or more, without a dollar sign or commas.';
+    return trimmed;
+  }
+  const [whole, fraction = ''] = trimmed.split('.');
+  if (integer && (fraction.length > 0 || Number(trimmed) < 1)) errors[key] = 'Enter a positive whole number, such as 3.';
+  else if (whole.replace(/^0+/, '').length > 12) errors[key] = 'Use no more than 12 digits before the decimal point.';
+  else if (fraction.length > maxDecimals) errors[key] = `Use no more than ${maxDecimals} decimal places.`;
+  return normalizeDecimal(trimmed);
+}
+function validateItem(draft, items) {
+  const item = clone(draft);
+  const errors = {};
+  for (const key of ['inventory', 'style', 'materialCode', 'productionCode']) item[key] = item[key].trim();
+  if (!item.inventory) errors.inventory = 'Enter an inventory number.';
+  else if (items.some(other => other.id !== item.id && other.inventory.trim().toLowerCase() === item.inventory.toLowerCase())) errors.inventory = 'This inventory number is already in use. Give each piece its own number.';
+  if (!MATERIALS.includes(item.material)) errors.material = 'Choose the main material.';
+  if (!STATUSES.includes(item.status)) errors.status = 'Choose Unknown, Available, or Sold.';
+  item.year = String(item.year).trim();
+  if ((item.month && !item.year) || (!item.month && item.year)) errors.year = 'Provide both month and year, or clear the date.';
+  else if (item.year && (!/^\d{4}$/.test(item.year) || Number(item.year) < 1000 || Number(item.year) > 9999)) errors.year = 'Enter a four-digit year, such as 2026.';
+  if (item.month && !/^(?:[1-9]|1[0-2])$/.test(item.month)) errors.month = 'Choose a month.';
+  for (const key of ['materialCost', 'productionCost', 'retail', 'insurance']) item[key] = numeric(item[key], key, errors);
+  item.groups.forEach(group => {
+    for (const key of ['type', 'purchaseCode', 'sellingCode']) group[key] = group[key].trim();
+    const prefix = `group-${group.id}-`;
+    group.quantity = numeric(group.quantity, `${prefix}quantity`, errors, { integer: true, maxDecimals: 0 });
+    group.carats = numeric(group.carats, `${prefix}carats`, errors, { maxDecimals: 6 });
+    group.purchaseRate = numeric(group.purchaseRate, `${prefix}purchaseRate`, errors);
+    group.sellingRate = numeric(group.sellingRate, `${prefix}sellingRate`, errors);
+  });
+  return { item, errors };
+}
+
+
+
+async function preparePhoto(file) {
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    throw new Error(`“${file.name}” could not be added. Choose a JPEG, PNG, or WebP image. For HEIC photos, export a JPEG from Photos first.`);
+  }
+  if (file.size > 20 * 1024 * 1024) throw new Error(`“${file.name}” is too large. Choose a photo smaller than 20 MB.`);
+  const url = URL.createObjectURL(file);
+  try {
+    const image = await new Promise((resolve, reject) => {
+      const loaded = new Image();
+      loaded.onload = () => resolve(loaded);
+      loaded.onerror = () => reject(new Error(`“${file.name}” could not be opened. Try another image.`));
+      loaded.src = url;
+    });
+    const scale = Math.min(1, 1200 / Math.max(image.naturalWidth, image.naturalHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('This browser could not prepare the photo. Try again in Safari or Chrome.');
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    const data = canvas.toDataURL('image/jpeg', 0.76);
+    if (data.length > 900000) throw new Error(`“${file.name}” is too detailed for prototype storage. Choose a smaller photo.`);
+    return { id: newId(), name: file.name, data };
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+
+
+function button(label, action, options = {}) {
+  return `<button type="${options.submit ? 'submit' : 'button'}" class="button ${options.primary ? 'primary' : ''} ${options.className || ''}" ${action ? `data-action="${action}"` : ''} ${options.data || ''}>${label}</button>`;
+}
+function field(label, key, value, { options, help, required = false, numeric = false, integer = false, maxlength = 100, scope = '' } = {}) {
+  const id = e(scope ? `group-${scope}-${key}` : key);
+  const name = e(scope ? `${scope}:${key}` : key);
+  const descriptions = `${help ? `${id}-help ` : ''}${id}-error`;
+  const input = options ? `<select id="${id}" name="${name}" ${required ? 'aria-required="true"' : ''} aria-describedby="${descriptions}">${options.map(option => {
+    const [optionValue, text] = Array.isArray(option) ? option : [option, option];
+    return `<option value="${e(optionValue)}" ${String(value) === String(optionValue) ? 'selected' : ''}>${e(text)}</option>`;
+  }).join('')}</select>` : `<input id="${id}" name="${name}" value="${e(value)}" ${numeric ? `inputmode="${integer ? 'numeric' : 'decimal'}"` : ''} maxlength="${maxlength}" ${required ? 'aria-required="true"' : ''} aria-describedby="${descriptions}" autocomplete="off">`;
+  return `<div class="field"><label for="${id}">${label}${required ? ' <span class="required-label">Required</span>' : ''}</label>${input}${help ? `<p class="field-help" id="${id}-help">${help}</p>` : ''}<p class="field-error" id="${id}-error" hidden></p></div>`;
+}
+function financialFields(amountLabel, amountKey, amount, codeLabel, codeKey, code, scope = '') {
+  return `<div class="amount-code-pair">${field(amountLabel, amountKey, amount, { numeric: true, scope })}${field(codeLabel, codeKey, code, { scope })}</div>`;
+}
+function financialRow(label, amount, code, perCarat = false) {
+  return `<div class="financial-row"><div><span class="row-label">${label}</span><strong>${money(amount)}${perCarat && amount !== '' ? '<small> / carat</small>' : ''}</strong></div><div class="code-value"><span class="row-label">Code</span><span>${textValue(code)}</span></div></div>`;
+}
+function cover(item, large = false) {
+  return item.photos.length ? photoImage(item.photos[0], large ? 'detail-photo' : 'inventory-photo', `Photograph of ${item.inventory}`) : photoPlaceholder(large);
+}
+function emptyState(title, description, action) {
+  return `<div class="empty-state"><h2>${title}</h2><p>${description}</p>${action || ''}</div>`;
+}
+
+
+
+function matchingItems(items, search) {
+  const query = search.trim().toLowerCase();
+  return items.filter(item => item.inventory.toLowerCase().includes(query) || item.style.toLowerCase().includes(query));
+}
+function inventoryResults(items, search) {
+  const matches = matchingItems(items, search);
+  if (!matches.length) return emptyState(search.trim() ? 'No matching items' : 'Your inventory is ready for its first piece', search.trim() ? 'Try another inventory or style number, or clear your search.' : 'Add an item to start your digital inventory.', button(search.trim() ? 'Clear search' : 'Add item', search.trim() ? 'clear-search' : 'add', { primary: true }));
+  return `<div class="inventory-table" role="table" aria-label="Jewelry inventory"><div class="list-head" role="row"><span role="columnheader">Photograph</span><span role="columnheader">Inventory number</span><span role="columnheader">Style number</span><span role="columnheader">Retail selling price</span><span role="columnheader">Status</span><span role="columnheader" class="sr-only">Open item</span></div>${matches.map(item => `<div class="inventory-row" role="row">
+    <div class="thumbnail" role="cell">${cover(item)}</div>
+    <div class="inventory-number" role="cell"><span class="mobile-label">Inventory number</span><strong>${e(item.inventory)}</strong>${item.fictional ? '<span class="sample-label">Fictional sample</span>' : ''}</div>
+    <div class="style-cell" role="cell"><span class="mobile-label">Style number</span>${textValue(item.style)}</div>
+    <div class="price-cell" role="cell"><span class="mobile-label">Retail selling price</span><strong>${money(item.retail)}</strong></div>
+    <div class="status-cell" role="cell"><span class="mobile-label">Status</span>${statusBadge(item.status)}</div>
+    <div class="view-cell" role="cell">${button('View item <span aria-hidden="true">→</span>', 'view', { data: `data-id="${e(item.id)}" aria-label="View item ${e(item.inventory)}"` })}</div>
+  </div>`).join('')}</div>`;
+}
+function inventoryView(items, search, error) {
+  const count = matchingItems(items, search).length;
+  return `<main id="main" class="page inventory-page" tabindex="-1">
+    <div class="page-heading"><div><p class="eyebrow">YOUR COLLECTION</p><h1>Inventory</h1><p class="intro">Find a piece. Keep every detail together.</p></div>${error ? '' : button('<span aria-hidden="true">＋</span> Add item', 'add', { primary: true })}</div>
+    ${error ? `<div class="notice error-notice" role="alert"><h2>Saved inventory is unavailable</h2><p>${e(error)}</p>${button('Try again', 'reload')}</div>` : `
+    <div class="search-area"><label for="inventory-search">Search inventory or style number</label><div class="search-control"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" stroke-width="1.8"/><path d="m16 16 5 5" stroke="currentColor" stroke-width="1.8"/></svg><input type="search" id="inventory-search" value="${e(search)}" autocomplete="off" placeholder="For example, D2439 or IR 891">${button('Clear search', 'clear-search', { className: 'text-button search-clear', data: search ? '' : 'hidden' })}</div></div>
+    <div class="list-summary"><p id="result-count" aria-live="polite">${count} ${count === 1 ? 'item' : 'items'}${search.trim() ? ' found' : ' in inventory'}</p><p>One record for each piece</p></div>
+    <section id="inventory-results" aria-label="Inventory results">${inventoryResults(items, search)}</section>
+    <p class="sample-note">D2439 uses your supplied details. Items labeled “Fictional sample” are examples only.</p>`}
+  </main>`;
+}
+
+
+
+function detailView(item, confirmation = '') {
+  return `<main id="main" class="page detail-page" tabindex="-1">
+    <div class="back-row">${button('<span aria-hidden="true">←</span> Back to inventory', 'inventory', { className: 'text-button back-button' })}<span class="eyebrow">INVENTORY CARD</span></div>
+    ${confirmation ? `<div class="save-confirmation" role="status"><span aria-hidden="true">✓</span> ${e(confirmation)}</div>` : ''}
+    <div class="page-heading detail-heading"><div><h1>${e(item.inventory)}</h1><div class="detail-subtitle"><span>Style number <strong>${textValue(item.style)}</strong></span>${statusBadge(item.status)}</div>${item.fictional ? '<p class="fictional-note">Fictional sample item — editable demonstration data.</p>' : ''}</div>${button('Edit item', 'edit', { primary: true, data: `data-id="${e(item.id)}"` })}</div>
+    <div class="detail-layout"><section class="photo-section" aria-label="Item photographs"><div id="large-photo" class="large-photo">${cover(item, true)}</div>${photoThumbnails(item)}${item.status === 'Unknown' ? '<p class="photo-caption">Status is unknown; it has not been confirmed.</p>' : ''}</section>
+    <section class="item-card" aria-label="Item information and pricing"><div class="retail-block"><span class="row-label">Retail selling price</span><p class="retail-price">${money(item.retail)}</p></div>
+    <dl class="material-summary"><div><dt>Main material</dt><dd>${textValue(item.material)}</dd></div><div><dt>Manufacture month/year</dt><dd>${manufacture(item)}</dd></div></dl>
+    <div class="financial-section"><h2>Costs &amp; valuation</h2>${financialRow('Material cost', item.materialCost, item.materialCode)}${financialRow('Recorded production cost', item.productionCost, item.productionCode)}<div class="financial-row insurance-row"><div><span class="row-label">Insurance value</span><strong>${money(item.insurance)}</strong></div></div></div></section></div>
+    <section class="gemstone-section" aria-labelledby="gemstone-heading"><div class="section-heading"><h2 id="gemstone-heading">Gemstone groups</h2><span class="section-count">${item.groups.length} ${item.groups.length === 1 ? 'group' : 'groups'}</span></div>${item.groups.length ? `<div class="gemstone-grid">${item.groups.map(gemstoneCard).join('')}</div>` : '<p class="not-provided empty-groups">No gemstone groups provided.</p>'}</section>
+  </main>`;
+}
+function photoThumbnails(item) {
+  if (item.photos.length < 2) return '';
+  return `<div class="photo-thumbnails">${item.photos.map((photo, index) => `<button type="button" data-action="select-photo" data-id="${e(photo.id)}" class="photo-thumb ${index === 0 ? 'selected' : ''}" aria-pressed="${index === 0}">${photoImage(photo, '', `Photograph ${index + 1} of ${item.inventory}`)}<span>${index === 0 ? 'Cover photo' : `Photo ${index + 1}`}</span></button>`).join('')}</div>`;
+}
+function gemstoneCard(group, index) {
+  return `<article class="gemstone-card"><div class="gemstone-title"><span class="group-index">${String(index + 1).padStart(2, '0')}</span><h3>${group.type ? e(group.type) : 'Type not provided'}</h3></div><dl class="gemstone-summary"><div><dt>Quantity</dt><dd>${textValue(group.quantity)}</dd></div><div><dt>Total carats</dt><dd>${carats(group.carats)}</dd></div></dl><p class="field-help carat-help">Combined weight of all stones in this group.</p>${financialRow('Purchase rate', group.purchaseRate, group.purchaseCode, true)}${financialRow('Selling rate', group.sellingRate, group.sellingCode, true)}</article>`;
+}
+
+
+
+function editorView(item, editing) {
+  return `<main id="main" class="page editor-page" tabindex="-1"><div class="page-heading"><div><p class="eyebrow">${editing ? 'UPDATE INVENTORY CARD' : 'NEW INVENTORY CARD'}</p><h1>${editing ? 'Edit item' : 'Add item'}</h1><p class="intro">${editing ? `Update the details for ${e(item.inventory)}.` : 'Give each physical piece its own inventory card.'}</p></div>${button('Cancel', 'cancel')}</div>
+  <div class="form-guide"><strong>Only inventory number and main material are required.</strong><span>Leave anything you don’t know blank. Amounts are in dollars.</span></div>
+  <form id="item-form" novalidate><p id="form-error" class="notice error-notice" role="alert" hidden></p>
+  ${itemInformation(item)}${photographs(item)}${materialSection(item)}${gemstoneSection(item)}${pricingSection(item)}
+  <div class="form-actions"><p>${storagePersistent ? 'Changes are saved only when you select “Save item.”' : '“Save item” keeps changes in this tab only. They will not persist.'}</p><div>${button('Cancel', 'cancel')}${button('Save item', '', { primary: true, submit: true })}</div></div></form></main>`;
+}
+function sectionTitle(number, title, subtitle = '') {
+  return `<div class="form-section-title"><span class="section-number" aria-hidden="true">${number}</span><div><h2>${title}</h2>${subtitle ? `<p>${subtitle}</p>` : ''}</div></div>`;
+}
+function itemInformation(item) {
+  return `<section class="form-section" aria-label="Item information">${sectionTitle('01', 'Item information')}
+    <div class="fields-grid">${field('Inventory number', 'inventory', item.inventory, { required: true })}${field('Style number', 'style', item.style, { help: 'More than one piece can share a style number.' })}${field('Status', 'status', item.status, { options: STATUSES })}<div class="date-fields"><div class="date-pair">${field('Manufacture month', 'month', item.month, { options: [['', 'Not provided'], ...MONTHS.map((month, index) => [String(index + 1), month])] })}${field('Manufacture year', 'year', item.year, { numeric: true, integer: true, maxlength: 4 })}</div>${button('Clear date', 'clear-date', { className: 'text-button' })}</div></div>
+  </section>`;
+}
+function photographs(item) {
+  return `<section class="form-section" aria-label="Photographs">${sectionTitle('02', 'Photographs', 'The cover photo is shown in the inventory list.')}<div id="editor-photos">${editorPhotos(item)}</div><div class="photo-upload"><label class="button" for="photo-input"><span aria-hidden="true">＋</span> Add photos</label><input type="file" id="photo-input" accept="image/jpeg,image/png,image/webp" multiple class="sr-only"><p>JPEG, PNG or WebP. ${storagePersistent ? 'Smaller copies are saved in this browser when you save the item.' : 'Smaller copies stay in memory only and will not persist.'}</p></div><p id="photo-error" class="field-error" role="alert" hidden></p><p id="photo-progress" class="field-help" role="status"></p></section>`;
+}
+function editorPhotos(item) {
+  if (!item.photos.length) return '<div class="no-photos"><strong>No photos added</strong><span>You can add photos now or later.</span></div>';
+  return `<div class="editor-photo-grid">${item.photos.map((photo, index) => `<div class="editor-photo">${photoImage(photo)}<p class="photo-name" title="${e(photo.name)}">${e(photo.name)}</p><div class="photo-controls">${index === 0 ? '<span class="cover-label">✓ Cover photo</span>' : button('Make cover', 'make-cover', { data: `data-id="${e(photo.id)}"` })}${button('Remove photo', 'remove-photo', { className: 'text-button danger-text', data: `data-id="${e(photo.id)}" aria-label="Remove photo ${index + 1}"` })}</div></div>`).join('')}</div>`;
+}
+function materialSection(item) {
+  return `<section class="form-section" aria-label="Material and material cost">${sectionTitle('03', 'Material and material cost')}<div class="fields-grid"><div>${field('Main material', 'material', item.material, { required: true, options: [['', 'Choose main material'], ...MATERIALS] })}<p class="field-help">Local lookup choices for this prototype.</p></div>${financialFields('Material cost ($)', 'materialCost', item.materialCost, 'Material cost code', 'materialCode', item.materialCode)}</div></section>`;
+}
+function gemstoneSection(item) {
+  return `<section class="form-section" aria-label="Gemstone groups">${sectionTitle('04', 'Gemstone groups', 'Keep stones of the same type together in one group.')}<div id="editor-groups">${editorGroups(item)}</div>${button('<span aria-hidden="true">＋</span> Add gemstone group', 'add-group')}</section>`;
+}
+function editorGroups(item) {
+  if (!item.groups.length) return '<p class="no-groups">No gemstone groups added. This section is optional.</p>';
+  return item.groups.map((group, index) => `<div class="editor-group"><div class="editor-group-heading"><h3>Group ${index + 1}</h3>${button('Remove group', 'remove-group', { className: 'text-button danger-text', data: `data-id="${e(group.id)}" aria-label="Remove gemstone group ${index + 1}"` })}</div><div class="fields-grid group-fields">
+  ${field('Gemstone type', 'type', group.type, { scope: group.id, options: [['', 'Not provided'], ...GEMSTONES, ...(!GEMSTONES.includes(group.type) && group.type ? [group.type] : [])] })}<div class="quantity-carats">${field('Quantity', 'quantity', group.quantity, { scope: group.id, numeric: true, integer: true })}${field('Total carats', 'carats', group.carats, { scope: group.id, numeric: true, help: 'Combined weight of all stones in this group.' })}</div>
+  ${financialFields('Purchase rate per carat ($)', 'purchaseRate', group.purchaseRate, 'Purchase rate code', 'purchaseCode', group.purchaseCode, group.id)}${financialFields('Selling rate per carat ($)', 'sellingRate', group.sellingRate, 'Selling rate code', 'sellingCode', group.sellingCode, group.id)}</div></div>`).join('');
+}
+function pricingSection(item) {
+  return `<section class="form-section" aria-label="Pricing and valuation">${sectionTitle('05', 'Pricing and valuation')}<div class="fields-grid">${financialFields('Recorded production cost ($)', 'productionCost', item.productionCost, 'Production cost code', 'productionCode', item.productionCode)}<div class="pricing-help">Enter the recorded cost directly. This field is not calculated.</div>${field('Retail selling price ($)', 'retail', item.retail, { numeric: true })}${field('Insurance value ($)', 'insurance', item.insurance, { numeric: true, help: 'Enter independently from the retail selling price.' })}</div></section>`;
+}
+
+
+
+const app = document.getElementById('app');
+let { items, error: storageError } = loadItems();
+let route = '';
+let search = '';
+let draft = null;
+let originalDraft = '';
+let photoBusy = false;
+let historyIndex = 0;
+let restoringHistory = false;
+let acceptingBack = false;
+let discardResolve = null;
+let confirmationTimer;
+const dirty = () => draft !== null && JSON.stringify(draft) !== originalDraft;
+const editorRoute = value => value === 'add' || value.startsWith('edit/');
+
+function shell(content) {
+  return `<header class="app-header"><div class="header-inner"><button type="button" class="brand" data-action="inventory" aria-label="K. Goldschmidt Jewelers — Back to inventory"><img class="brand-logo" src="data:image/webp;base64,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" alt="" width="182" height="171"><span class="brand-copy"><span class="brand-name">K. Goldschmidt Jewelers</span><span class="brand-description">Jewelry Inventory</span></span></button><span class="local-label">${storagePersistent ? 'Saved in this browser' : 'Memory only · Not saved'}</span></div></header>
+    ${storageNotice ? `<aside class="storage-warning" role="status">${e(storageNotice)}</aside>` : ''}${content}<footer class="app-footer"><p>Local prototype · No account, uploads or syncing</p></footer>
+    <dialog id="discard-dialog" aria-labelledby="discard-title" aria-describedby="discard-description"><h2 id="discard-title">Discard unsaved changes?</h2><p id="discard-description">Your changes have not been saved. Keep editing to finish this item, or discard your changes to leave.</p><div class="dialog-actions">${button('Discard changes', 'discard', { className: 'danger-text' })}${button('Keep editing', 'keep-editing', { primary: true })}</div></dialog>`;
+}
+function readRoute() { return location.hash.slice(1) || 'inventory'; }
+function recordFor(value) { return items.find(item => item.id === value.split('/')[1]); }
+function render(target, confirmation = '') {
+  clearTimeout(confirmationTimer);
+  route = target;
+  photoBusy = false;
+  let content;
+  if (storageError || target === 'inventory') {
+    draft = null;
+    content = inventoryView(items, search, storageError);
+    document.title = 'Inventory · Jewelry inventory';
+  } else if (editorRoute(target)) {
+    const editing = target.startsWith('edit/');
+    const existing = editing ? recordFor(target) : null;
+    if (editing && !existing) return renderNotFound();
+    draft = editing ? clone(existing) : emptyItem();
+    originalDraft = JSON.stringify(draft);
+    photoBusy = false;
+    content = editorView(draft, editing);
+    document.title = `${editing ? 'Edit' : 'Add'} item · Jewelry inventory`;
+  } else if (target.startsWith('item/')) {
+    draft = null;
+    const item = recordFor(target);
+    if (!item) return renderNotFound();
+    content = detailView(item, confirmation);
+    document.title = `${item.inventory} · Jewelry inventory`;
+  } else return renderNotFound();
+  app.innerHTML = shell(content);
+  wireDialog();
+  window.scrollTo(0, 0);
+  if (confirmation) confirmationTimer = setTimeout(() => document.querySelector('.save-confirmation')?.remove(), 6500);
+}
+function renderNotFound() {
+  draft = null;
+  app.innerHTML = shell(`<main class="page" id="main" tabindex="-1">${emptyState('Item not found', 'This item is not in the current inventory.', button('Back to inventory', 'inventory', { primary: true }))}</main>`);
+  wireDialog();
+}
+function requestDiscard() {
+  if (!dirty() && !photoBusy) return Promise.resolve(true);
+  if (discardResolve) return Promise.resolve(false);
+  return new Promise(resolve => {
+    discardResolve = resolve;
+    document.getElementById('discard-dialog').showModal();
+    document.querySelector('[data-action="keep-editing"]').focus();
+  });
+}
+function settleDiscard(discard) {
+  document.getElementById('discard-dialog').close();
+  const resolve = discardResolve;
+  discardResolve = null;
+  resolve?.(discard);
+}
+function wireDialog() {
+  document.getElementById('discard-dialog').addEventListener('cancel', event => {
+    event.preventDefault();
+    settleDiscard(false);
+  });
+}
+async function navigate(target, confirmation = '', saved = false) {
+  if (!saved && !await requestDiscard()) return;
+  historyIndex += 1;
+  history.pushState({ jewelIndex: historyIndex }, '', `#${target}`);
+  render(target, confirmation);
+  document.getElementById('main')?.focus({ preventScroll: true });
+}
+window.addEventListener('popstate', async event => {
+  if (restoringHistory) { restoringHistory = false; return; }
+  const target = readRoute();
+  const targetIndex = event.state?.jewelIndex;
+  if (dirty() || photoBusy) {
+    if (acceptingBack) acceptingBack = false;
+    else if (Number.isInteger(targetIndex)) {
+      const distance = targetIndex - historyIndex;
+      restoringHistory = true;
+      history.go(-distance);
+      const discard = await requestDiscard();
+      if (discard) { acceptingBack = true; history.go(distance); }
+      return;
+    } else {
+      history.replaceState({ jewelIndex: historyIndex }, '', `#${route}`);
+      if (await requestDiscard()) navigate(target, '', true);
+      return;
+    }
+  }
+  historyIndex = Number.isInteger(targetIndex) ? targetIndex : historyIndex + 1;
+  history.replaceState({ jewelIndex: historyIndex }, '', `#${target}`);
+  render(target);
+  document.getElementById('main')?.focus({ preventScroll: true });
+});
+window.addEventListener('beforeunload', event => {
+  if (dirty() || photoBusy || memoryChanges) { event.preventDefault(); event.returnValue = ''; }
+});
+
+app.addEventListener('input', event => {
+  const input = event.target;
+  if (input.id === 'inventory-search') { search = input.value; updateSearch(); return; }
+  if (!draft || !input.name) return;
+  if (input.name.includes(':')) {
+    const [id, key] = input.name.split(':');
+    const group = draft.groups.find(value => value.id === id);
+    if (group) group[key] = input.value;
+  } else draft[input.name] = input.value;
+  input.removeAttribute('aria-invalid');
+  const error = document.getElementById(`${input.id}-error`);
+  if (error) error.hidden = true;
+});
+function updateSearch() {
+  document.getElementById('inventory-results').innerHTML = inventoryResults(items, search);
+  const count = matchingItems(items, search).length;
+  document.getElementById('result-count').textContent = `${count} ${count === 1 ? 'item' : 'items'}${search.trim() ? ' found' : ' in inventory'}`;
+  document.querySelector('.search-clear').hidden = !search;
+}
+app.addEventListener('click', async event => {
+  const externalLink = event.target.closest('a[data-external]');
+  if (externalLink) {
+    event.preventDefault();
+    if (await requestDiscard()) { draft = null; photoBusy = false; location.href = externalLink.href; }
+    return;
+  }
+  const control = event.target.closest('[data-action]');
+  if (!control) return;
+  const action = control.dataset.action;
+  const id = control.dataset.id;
+  if (action === 'keep-editing' || action === 'discard') { settleDiscard(action === 'discard'); return; }
+  if (action === 'inventory') return navigate('inventory');
+  if (action === 'add') return navigate('add');
+  if (action === 'view') return navigate(`item/${id}`);
+  if (action === 'edit') return navigate(`edit/${id}`);
+  if (action === 'reload') { ({ items, error: storageError } = loadItems()); render('inventory'); return; }
+  if (action === 'clear-search') { search = ''; document.getElementById('inventory-search').value = ''; updateSearch(); document.getElementById('inventory-search').focus(); return; }
+  if (action === 'select-photo') {
+    const photo = recordFor(route)?.photos.find(value => value.id === id);
+    if (photo) {
+      document.getElementById('large-photo').innerHTML = photoImage(photo, 'detail-photo');
+      document.querySelectorAll('.photo-thumb').forEach(thumb => { const selected = thumb.dataset.id === id; thumb.classList.toggle('selected', selected); thumb.setAttribute('aria-pressed', String(selected)); });
+    }
+    return;
+  }
+  if (!draft) return;
+  if (action === 'cancel') return navigate(route.startsWith('edit/') ? `item/${draft.id}` : 'inventory');
+  if (action === 'clear-date') {
+    for (const key of ['month', 'year']) { draft[key] = ''; document.getElementById(key).value = ''; document.getElementById(`${key}-error`).hidden = true; document.getElementById(key).removeAttribute('aria-invalid'); }
+  }
+  if (action === 'add-group') {
+    const group = emptyGroup(); draft.groups.push(group); refreshGroups(); document.getElementById(`group-${group.id}-type`).focus();
+  }
+  if (action === 'remove-group') {
+    draft.groups = draft.groups.filter(group => group.id !== id); refreshGroups(); document.querySelector('[data-action="add-group"]').focus({ preventScroll: true });
+  }
+  if (action === 'make-cover') {
+    const photo = draft.photos.find(value => value.id === id);
+    if (photo) draft.photos = [photo, ...draft.photos.filter(value => value.id !== id)];
+    refreshPhotos(); document.querySelector('[data-action="remove-photo"]')?.focus({ preventScroll: true });
+  }
+  if (action === 'remove-photo') { draft.photos = draft.photos.filter(value => value.id !== id); refreshPhotos(); document.getElementById('photo-input').focus({ preventScroll: true }); }
+});
+function refreshGroups() { document.getElementById('editor-groups').innerHTML = editorGroups(draft); }
+function refreshPhotos() { document.getElementById('editor-photos').innerHTML = editorPhotos(draft); }
+app.addEventListener('change', async event => {
+  if (event.target.id !== 'photo-input' || !draft) return;
+  const files = [...event.target.files];
+  event.target.value = '';
+  if (!files.length) return;
+  const currentDraft = draft;
+  const photoError = document.getElementById('photo-error');
+  const progress = document.getElementById('photo-progress');
+  photoError.hidden = true;
+  photoBusy = true;
+  const submit = document.querySelector('[type="submit"]');
+  submit.disabled = true;
+  event.target.disabled = true;
+  const failures = [];
+  for (const [index, file] of files.entries()) {
+    if (draft !== currentDraft) break;
+    progress.textContent = `Preparing photo ${index + 1} of ${files.length}…`;
+    try {
+      const photo = await preparePhoto(file);
+      if (draft === currentDraft) { draft.photos.push(photo); refreshPhotos(); }
+    } catch (error) { failures.push(error.message); }
+  }
+  if (draft !== currentDraft) return;
+  photoBusy = false;
+  submit.disabled = false;
+  event.target.disabled = false;
+  progress.textContent = failures.length ? '' : `${files.length} ${files.length === 1 ? 'photo' : 'photos'} added to this draft.`;
+  if (failures.length) { photoError.textContent = failures.join(' '); photoError.hidden = false; }
+});
+app.addEventListener('submit', event => {
+  if (event.target.id !== 'item-form') return;
+  event.preventDefault();
+  if (!draft || photoBusy) return;
+  document.querySelectorAll('.field-error').forEach(element => { if (element.id !== 'photo-error') element.hidden = true; });
+  document.querySelectorAll('[aria-invalid]').forEach(element => element.removeAttribute('aria-invalid'));
+  const { item, errors } = validateItem(draft, items);
+  const notice = document.getElementById('form-error');
+  const entries = Object.entries(errors);
+  if (entries.length) {
+    notice.textContent = `Please check ${entries.length === 1 ? 'the highlighted field' : `the ${entries.length} highlighted fields`} below. Your changes have not been saved.`;
+    notice.hidden = false;
+    for (const [key, message] of entries) {
+      const input = document.getElementById(key);
+      const label = document.getElementById(`${key}-error`);
+      if (input && label) { input.setAttribute('aria-invalid', 'true'); label.textContent = message; label.hidden = false; }
+    }
+    document.querySelector('[aria-invalid="true"]')?.focus();
+    return;
+  }
+  const updated = items.some(value => value.id === item.id) ? items.map(value => value.id === item.id ? item : value) : [...items, item];
+  try {
+    const persisted = saveItems(updated);
+    items = updated;
+    if (!persisted) memoryChanges = true;
+    navigate(`item/${item.id}`, persisted ? 'Item saved in this browser.' : 'Item updated in memory only. Changes will be lost when this tab closes or reloads.', true);
+  } catch (error) { notice.textContent = error.message; notice.hidden = false; notice.scrollIntoView({ block: 'center', behavior: 'auto' }); }
+});
+history.replaceState({ jewelIndex: historyIndex }, '', `#${readRoute()}`);
+render(readRoute());
+
+document.querySelector('.skip-link').addEventListener('click', event => { event.preventDefault(); document.getElementById('main')?.focus(); });
+
+})();
+</script>
+</body>
+</html>

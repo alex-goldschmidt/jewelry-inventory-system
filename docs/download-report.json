@@ -1,0 +1,30 @@
+{
+  "source": "https://3515c8a98f11423a.d.superapp.now/prototype/index.html#inventory",
+  "downloaded": [
+    "https://3515c8a98f11423a.d.superapp.now/prototype/app.js",
+    "https://3515c8a98f11423a.d.superapp.now/prototype/index.html",
+    "https://3515c8a98f11423a.d.superapp.now/prototype/models.js",
+    "https://3515c8a98f11423a.d.superapp.now/prototype/photos.js",
+    "https://3515c8a98f11423a.d.superapp.now/prototype/sample-data.js",
+    "https://3515c8a98f11423a.d.superapp.now/prototype/storage.js",
+    "https://3515c8a98f11423a.d.superapp.now/prototype/styles.css",
+    "https://3515c8a98f11423a.d.superapp.now/prototype/validation.js",
+    "https://3515c8a98f11423a.d.superapp.now/prototype/views/detail.js",
+    "https://3515c8a98f11423a.d.superapp.now/prototype/views/editor.js",
+    "https://3515c8a98f11423a.d.superapp.now/prototype/views/inventory.js",
+    "https://3515c8a98f11423a.d.superapp.now/prototype/views/shared.js"
+  ],
+  "failed": [],
+  "external_references": [
+    "https://3515c8a98f11423a.d.superapp.now/privacy",
+    "https://3515c8a98f11423a.d.superapp.now/support",
+    "https://superapp.dev",
+    "https://superapp.dev/?utm_source=made-with-superapp",
+    "https://superapp.dev/superapp-logo.png"
+  ],
+  "notes": [
+    "All 12 prototype HTML/CSS/JavaScript files downloaded.",
+    "Dynamic photo.data references come from browser storage, not server files.",
+    "Superapp branding image and links retain their original external URLs."
+  ]
+}
